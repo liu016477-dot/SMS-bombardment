@@ -10,21 +10,7 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
-  // 1. 静态资源和本站关键路径绕过（让 Pages 原生处理）
-  const isStaticAsset =
-    pathname === "/" ||
-    pathname === "/index.html" ||
-    pathname === "/logo.ico" ||
-    pathname === "/logo.gif" ||
-    pathname === "/_headers" ||
-    pathname === "/wrangler.toml" ||
-    pathname === "/wrangler.json";
-
-  if (isStaticAsset) {
-    return context.next();
-  }
-
-  // 2. 获取目标 URL
+  // 1. 获取目标 URL（优先检查，避免被静态资源逻辑拦截）
   let targetUrl = url.searchParams.get("url");
 
   if (!targetUrl) {
@@ -35,6 +21,22 @@ export async function onRequest(context) {
     if (candidate.startsWith("http")) {
       // 拼接上原始请求的查询参数（如果有）
       targetUrl = decodeURIComponent(candidate) + url.search;
+    }
+  }
+
+  // 2. 静态资源和本站关键路径绕过（排除携带代理目标的请求）
+  if (!targetUrl) {
+    const isStaticAsset =
+      pathname === "/" ||
+      pathname === "/index.html" ||
+      pathname === "/logo.ico" ||
+      pathname === "/logo.gif" ||
+      pathname === "/_headers" ||
+      pathname === "/wrangler.toml" ||
+      pathname === "/wrangler.json";
+
+    if (isStaticAsset) {
+      return context.next();
     }
   }
 
